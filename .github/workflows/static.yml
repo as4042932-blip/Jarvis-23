@@ -1,43 +1,50 @@
-# Simple workflow for deploying static content to GitHub Pages
-name: Deploy static content to Pages
-
+name: Stark Satellite Real-Sync
 on:
-  # Runs on pushes targeting the default branch
-  push:
-    branches: ["main"]
-
-  # Allows you to run this workflow manually from the Actions tab
+  schedule:
+    - cron: '*/30 * * * *'
   workflow_dispatch:
-
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-
 jobs:
-  # Single deploy job since we're just deploying
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          # Upload entire repository
-          path: '.'
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - uses: actions/checkout@v4
+      - name: Fetch Real Data from NASA & Grok
+        run: |
+          python -c "
+          import requests, json, time
+          def get_stark_intel():
+              # 1. Real NASA Data (Using your API Key)
+              nasa_api = 'JehCMtph7r9FDiLfj8Gl4FdfMJKrTfIbhqh0RhJa'
+              n = requests.get(f'https://api.nasa.gov/planetary/apod?api_key={nasa_api}').json()
+              
+              # 2. Real Weather (Brindaban)
+              w = requests.get('https://api.open-meteo.com/v1/forecast?latitude=27.56&longitude=77.66&current_weather=true').json()['current_weather']
+              
+              # 3. Real Grok/Groq Analysis (Using your API Key)
+              grok_api = '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'
+              g_url = 'https://api.groq.com/openai/v1/chat/completions'
+              h = {'Authorization': f'Bearer {grok_api}'}
+              p = {
+                  'model': 'llama-3.3-70b-versatile', 
+                  'messages': [{'role': 'user', 'content': f'NASA Image: {n.get(\"title\")}. Temp: {w[\"temperature\"]}C. Give 1-sentence Stark style briefing.'}]
+              }
+              g = requests.post(g_url, headers=h, json=p).json()
+              
+              return {
+                  'temp': w['temperature'], 
+                  'nasa_title': n.get('title'), 
+                  'nasa_img': n.get('url'), 
+                  'grok_msg': g['choices'][0]['message']['content'], 
+                  'time': time.ctime()
+              }
+          
+          with open('satellite_data.json', 'w') as f:
+              json.dump(get_stark_intel(), f, indent=4)
+          "
+      - name: Push Real Data to Repo
+        run: |
+          git config --global user.name 'Stark-Bot'
+          git config --global user.email 'bot@stark-industries.com'
+          git add satellite_data.json
+          git commit -m 'Real-time Telemetry Updated' || exit 0
+          git push
