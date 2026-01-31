@@ -1,69 +1,180 @@
-name: Stark Satellite Real-Time Sync
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIKAS SINGH | STARK MISSION CONTROL</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --stark-blue: #00f2ff;
+            --stark-red: #ff3c00;
+            --bg-dark: #050505;
+        }
 
-on:
-  schedule:
-    - cron: '*/30 * * * *' # Har 30 min mein NASA/Weather/Grok sync hoga
-  workflow_dispatch:      # Manual button ke liye
+        body {
+            background-color: var(--bg-dark);
+            color: var(--stark-blue);
+            font-family: 'Share Tech Mono', monospace;
+            margin: 0;
+            padding: 10px;
+            overflow-x: hidden;
+        }
 
-jobs:
-  update-satellite:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+        /* Top Header Area */
+        .header {
+            border-bottom: 2px solid var(--stark-blue);
+            padding: 10px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 242, 255, 0.05);
+        }
 
-      - name: Setup Python environment
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+        .master-tag {
+            color: white;
+            background: var(--stark-red);
+            padding: 2px 8px;
+            font-family: 'Orbitron';
+            font-size: 0.8rem;
+        }
 
-      - name: Install Request Module
-        run: pip install requests
+        /* Main Layout Grid */
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 15px;
+        }
 
-      - name: Execute Stark Intel Script
-        env:
-          NASA_KEY: ${{ secrets.NASA_KEY }}
-          GROK_KEY: ${{ secrets.GROK_KEY }}
-        run: |
-          python << END
-          import requests, json, os, time
-          
-          def get_stark_intel():
-              # 1. Real-Time Weather (Brindaban)
-              w_url = "https://api.open-meteo.com/v1/forecast?latitude=27.56&longitude=77.66&current_weather=true"
-              weather = requests.get(w_url).json()['current_weather']
-              
-              # 2. NASA Deep Space Feed
-              n_url = f"https://api.nasa.gov/planetary/apod?api_key={os.getenv('NASA_KEY')}"
-              nasa = requests.get(n_url).json()
-              
-              # 3. Grok/Groq AI Real-Time Analysis
-              g_url = "https://api.groq.com/openai/v1/chat/completions"
-              headers = {"Authorization": f"Bearer {os.getenv('GROK_KEY')}"}
-              prompt = f"NASA Image: {nasa.get('title')}. Temp: {weather['temperature']}°C. Give a 2-sentence Stark style tactical briefing."
-              payload = {
-                  "model": "llama-3.3-70b-versatile",
-                  "messages": [{"role": "user", "content": prompt}]
-              }
-              grok_res = requests.post(g_url, headers=headers, json=payload).json()
-              
-              return {
-                  "temp": weather['temperature'],
-                  "nasa_title": nasa.get('title', 'Unknown Nebula'),
-                  "nasa_img": nasa.get('url', ''),
-                  "grok_msg": grok_res['choices'][0]['message']['content'],
-                  "time": time.ctime()
-              }
+        .panel {
+            border: 1px solid var(--stark-blue);
+            background: rgba(0, 242, 255, 0.02);
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: inset 0 0 15px rgba(0, 242, 255, 0.1);
+        }
 
-          data = get_stark_intel()
-          with open("satellite_data.json", "w") as f:
-              json.dump(data, f, indent=4)
-          END
+        /* Video Section */
+        .video-panel {
+            grid-column: span 2;
+            border-color: var(--stark-red);
+        }
 
-      - name: Push Data to Cloud
-        run: |
-          git config --global user.name "Stark-Bot"
-          git config --global user.email "bot@stark-industries.com"
-          git add satellite_data.json
-          git commit -m "Satellite Telemetry Updated: $(date)" || exit 0
-          git push
+        .video-box {
+            position: relative;
+            padding-bottom: 45%; /* Cinematic Wide */
+            height: 0;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .video-box iframe {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;
+        }
+
+        /* NASA Image */
+        #nasa-img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border: 1px solid var(--stark-blue);
+            margin-top: 10px;
+        }
+
+        .grok-box {
+            color: #ffcc00;
+            border-left: 3px solid var(--stark-red);
+            padding-left: 10px;
+            font-style: italic;
+        }
+
+        h2 { font-family: 'Orbitron'; font-size: 1rem; margin-top: 0; color: var(--stark-blue); }
+        .data-big { font-size: 2.5rem; font-weight: bold; }
+        .status-blink { height: 8px; width: 8px; background: #0f0; border-radius: 50%; display: inline-block; animation: blink 1s infinite; }
+        
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div>
+            <span class="master-tag">PATRON: VIKAS SINGH</span>
+            <h1 style="margin:5px 0 0 0; font-family: 'Orbitron'; font-size: 1.5rem;">STARK INDUSTRIES HUB</h1>
+        </div>
+        <div style="text-align: right;">
+            <div id="clock" style="font-size: 1.2rem; font-weight: bold;">00:00:00</div>
+            <small>UPLINK: ACTIVE <span class="status-blink"></span></small>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+        
+        <div class="column">
+            <div class="panel" style="margin-bottom: 15px;">
+                <h2>🛰️ NASA TELEMETRY</h2>
+                <div id="nasa-title" style="font-size: 0.8rem; color: #fff;">Syncing...</div>
+                <img id="nasa-img" src="" alt="NASA Feed">
+            </div>
+
+            <div class="panel">
+                <h2>🌡️ BRINDABAN CORE SENSORS</h2>
+                <div class="data-big" id="temp-val">--°C</div>
+                <p style="font-size: 0.7rem;">ATMOSPHERIC DATA: VERIFIED</p>
+            </div>
+        </div>
+
+        <div class="column">
+            <div class="panel" style="height: 100%; box-sizing: border-box;">
+                <h2>🤖 GROK AI TACTICAL BRIEFING</h2>
+                <div class="grok-box">
+                    <p id="grok-text">Awaiting satellite handshake... Decrypting Jarvis logs...</p>
+                </div>
+                <hr style="border: 0.5px solid #333; margin: 20px 0;">
+                <p style="font-size: 0.8rem; color: #888;">
+                    MASTER: Vikas Singh<br>
+                    LOCATION: Brindaban, India<br>
+                    SYSTEM: Satellite 2.0 (Grok-Enabled)
+                </p>
+            </div>
+        </div>
+
+        <div class="panel video-panel">
+            <h2>🔴 LIVE SATELLITE FEED: NASA TV / INTERVIEWS</h2>
+            <div class="video-box">
+                <iframe src="https://www.youtube.com/embed/21X5lGlDOfg?autoplay=1&mute=1&rel=0" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowfullscreen>
+                </iframe>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        async function updateDashboard() {
+            try {
+                const response = await fetch('satellite_data.json');
+                const data = await response.json();
+
+                document.getElementById('temp-val').innerText = data.temp + "°C";
+                document.getElementById('grok-text').innerText = data.grok_msg;
+                document.getElementById('nasa-title').innerText = data.nasa_title;
+                document.getElementById('nasa-img').src = data.nasa_img;
+            } catch (e) {
+                console.log("Sync in progress...");
+            }
+        }
+
+        function runClock() {
+            const time = new Date().toLocaleTimeString();
+            document.getElementById('clock').innerText = time;
+        }
+
+        setInterval(updateDashboard, 5000); // Har 5 second mein refresh
+        setInterval(runClock, 1000);
+        updateDashboard();
+    </script>
+</body>
+</html>
