@@ -1,0 +1,69 @@
+name: Stark Satellite Real-Time Sync
+
+on:
+  schedule:
+    - cron: '*/30 * * * *' # Har 30 min mein NASA/Weather/Grok sync hoga
+  workflow_dispatch:      # Manual button ke liye
+
+jobs:
+  update-satellite:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Request Module
+        run: pip install requests
+
+      - name: Execute Stark Intel Script
+        env:
+          NASA_KEY: ${{ secrets.NASA_KEY }}
+          GROK_KEY: ${{ secrets.GROK_KEY }}
+        run: |
+          python << END
+          import requests, json, os, time
+          
+          def get_stark_intel():
+              # 1. Real-Time Weather (Brindaban)
+              w_url = "https://api.open-meteo.com/v1/forecast?latitude=27.56&longitude=77.66&current_weather=true"
+              weather = requests.get(w_url).json()['current_weather']
+              
+              # 2. NASA Deep Space Feed
+              n_url = f"https://api.nasa.gov/planetary/apod?api_key={os.getenv('NASA_KEY')}"
+              nasa = requests.get(n_url).json()
+              
+              # 3. Grok/Groq AI Real-Time Analysis
+              g_url = "https://api.groq.com/openai/v1/chat/completions"
+              headers = {"Authorization": f"Bearer {os.getenv('GROK_KEY')}"}
+              prompt = f"NASA Image: {nasa.get('title')}. Temp: {weather['temperature']}°C. Give a 2-sentence Stark style tactical briefing."
+              payload = {
+                  "model": "llama-3.3-70b-versatile",
+                  "messages": [{"role": "user", "content": prompt}]
+              }
+              grok_res = requests.post(g_url, headers=headers, json=payload).json()
+              
+              return {
+                  "temp": weather['temperature'],
+                  "nasa_title": nasa.get('title', 'Unknown Nebula'),
+                  "nasa_img": nasa.get('url', ''),
+                  "grok_msg": grok_res['choices'][0]['message']['content'],
+                  "time": time.ctime()
+              }
+
+          data = get_stark_intel()
+          with open("satellite_data.json", "w") as f:
+              json.dump(data, f, indent=4)
+          END
+
+      - name: Push Data to Cloud
+        run: |
+          git config --global user.name "Stark-Bot"
+          git config --global user.email "bot@stark-industries.com"
+          git add satellite_data.json
+          git commit -m "Satellite Telemetry Updated: $(date)" || exit 0
+          git push
